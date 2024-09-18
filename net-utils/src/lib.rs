@@ -32,6 +32,7 @@ pub use ip_echo_server::{
     ip_echo_server, IpEchoServer, DEFAULT_IP_ECHO_SERVER_THREADS, MAX_PORT_COUNT_PER_MESSAGE,
     MINIMUM_IP_ECHO_SERVER_THREADS,
 };
+use std::str::FromStr;
 use {
     crate::sockets::{udp_socket_with_config, PLATFORM_SUPPORTS_SOCKET_CONFIGS},
     ip_echo_client::{ip_echo_server_request, ip_echo_server_request_with_binding},
@@ -43,7 +44,6 @@ use {
         io::{self},
         net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, ToSocketAddrs, UdpSocket},
     },
-    url::Url,
 };
 
 /// A data type representing a public Udp socket
@@ -223,24 +223,25 @@ pub fn parse_port_range(port_range: &str) -> Option<PortRange> {
     Some((start_port, end_port))
 }
 
+/// note: this is a very naive simplification done to support IPv6 bindings
+///
+/// recommended values to use are `127.0.0.1`, `0.0.0.0`, or `::1` or `::` for binding
 pub fn parse_host(host: &str) -> Result<IpAddr, String> {
-    // First, check if the host syntax is valid. This check is needed because addresses
-    // such as `("localhost:1234", 0)` will resolve to IPs on some networks.
-    let parsed_url = Url::parse(&format!("http://{host}")).map_err(|e| e.to_string())?;
-    if parsed_url.port().is_some() {
-        return Err(format!("Expected port in URL: {host}"));
-    }
-
-    // Next, check to see if it resolves to an IP address
-    let ips: Vec<_> = (host, 0)
-        .to_socket_addrs()
-        .map_err(|err| err.to_string())?
-        .map(|socket_address| socket_address.ip())
-        .collect();
-    if ips.is_empty() {
-        Err(format!("Unable to resolve host: {host}"))
-    } else {
-        Ok(ips[0])
+    match IpAddr::from_str(host) {
+        Ok(ip_addr) => Ok(ip_addr),
+        Err(_err) => {
+            // try sth else
+            let ips: Vec<_> = (host, 0)
+                .to_socket_addrs()
+                .map_err(|err| err.to_string())?
+                .map(|socket_address| socket_address.ip())
+                .collect();
+            if ips.is_empty() {
+                return Err(format!("Unable to resolve host: {host}"));
+            } else {
+                return Ok(ips[0]);
+            }
+        }
     }
 }
 
@@ -711,6 +712,12 @@ mod tests {
         parse_host("localhost").unwrap();
         parse_host("127.0.0.0:1234").unwrap_err();
         parse_host("127.0.0.0").unwrap();
+    }
+
+    #[test]
+    fn test_parse_host6() {
+        parse_host("::1").unwrap();
+        parse_host("::").unwrap();
     }
 
     #[test]
