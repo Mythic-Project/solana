@@ -1,3 +1,4 @@
+use log::info;
 use {
     crate::{account_storage::meta::StoredAccountMeta, accounts_db::AccountsDb},
     solana_measure::measure::Measure,
@@ -42,14 +43,15 @@ impl AccountsDb {
             return;
         };
 
-        let mut notify_stats = GeyserPluginNotifyAtSnapshotRestoreStats::default();
+        let notify_stats = GeyserPluginNotifyAtSnapshotRestoreStats::default();
         if accounts_update_notifier.snapshot_notifications_enabled() {
             let mut slots = self.storage.all_slots();
-            let mut notified_accounts: HashSet<Pubkey> = HashSet::default();
+            // let mut notified_accounts: HashSet<Pubkey> = HashSet::default();
 
             slots.sort_by(|a, b| b.cmp(a));
             for slot in slots {
-                self.notify_accounts_in_slot(slot, &mut notified_accounts, &mut notify_stats);
+                // self.notify_accounts_in_slot(slot, &mut notified_accounts, &mut notify_stats);
+                info!("disabled call to notify_accounts_in_slot for slot {}", slot);
             }
         }
 
@@ -76,6 +78,8 @@ impl AccountsDb {
         }
     }
 
+    // NOTE: this is snapshot related
+    #[allow(dead_code)]
     fn notify_accounts_in_slot(
         &self,
         slot: Slot,
@@ -132,6 +136,7 @@ impl AccountsDb {
         notify_stats.elapsed_filtering_us += measure_filter.as_us() as usize;
     }
 
+    #[allow(dead_code)]
     fn notify_filtered_accounts<'a>(
         &self,
         slot: Slot,
