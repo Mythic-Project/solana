@@ -4643,6 +4643,8 @@ impl AccountsDb {
     where
         F: FnMut(Option<(&Pubkey, AccountSharedData, Slot)>),
     {
+        info!("using scan_accounts");
+
         // This can error out if the slots being scanned over are aborted
         self.accounts_index.scan_accounts(
             ancestors,
@@ -4733,16 +4735,13 @@ impl AccountsDb {
     where
         F: FnMut(Option<(&Pubkey, AccountSharedData, Slot)>),
     {
-        let key = match &index_key {
-            IndexKey::ProgramId(key) => key,
-            IndexKey::SplTokenMint(key) => key,
-            IndexKey::SplTokenOwner(key) => key,
-        };
-        if !self.account_indexes.include_key(key) {
-            // the requested key was not indexed in the secondary index, so do a normal scan
-            let used_index = false;
-            self.scan_accounts(ancestors, bank_id, scan_func, config)?;
-            return Ok(used_index);
+        if let IndexKey::ProgramId(ref account_owner) = index_key {
+            if !self.account_indexes.include_key(account_owner) {
+                // the requested key was not indexed in the secondary index, so do a normal scan
+                let used_index = false;
+                self.scan_accounts(ancestors, bank_id, scan_func, config)?;
+                return Ok(used_index);
+            }
         }
 
         self.accounts_index.index_scan_accounts(
