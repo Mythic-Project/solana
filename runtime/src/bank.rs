@@ -5091,10 +5091,6 @@ impl Bank {
         )
     }
 
-    pub fn account_indexes_include_key(&self, key: &Pubkey) -> bool {
-        self.rc.accounts.account_indexes_include_key(key)
-    }
-
     /// Returns all the accounts this bank can load
     pub fn get_all_accounts(&self, sort_results: bool) -> ScanResult<Vec<PubkeyAccountSlot>> {
         self.rc
