@@ -246,9 +246,10 @@ impl AccountSecondaryIndexes {
     pub fn contains(&self, index: &AccountIndex) -> bool {
         self.indexes.contains(index)
     }
-    pub fn include_key(&self, key: &Pubkey) -> bool {
+    // note: this check is only allowed on ProgramId index using the account owner as key
+    pub fn include_key(&self, account_owner: &Pubkey) -> bool {
         match &self.keys {
-            Some(options) => options.exclude ^ options.keys.contains(key),
+            Some(options) => options.exclude ^ options.keys.contains(account_owner),
             None => true, // include all keys
         }
     }
@@ -946,6 +947,7 @@ impl<T: IndexValue, U: DiskIndexValue + From<T> + Into<T>> AccountsIndex<T, U> {
         will not be cleaned in the middle of the scan either. (NOTE similar reasoning is employed for
         assert!() justification in AccountsDb::retry_to_get_account_accessor)
         */
+
         match scan_type {
             ScanTypes::Unindexed(range) => {
                 // Pass "" not to log metrics, so RPC doesn't get spammy
@@ -1565,17 +1567,15 @@ impl<T: IndexValue, U: DiskIndexValue + From<T> + Into<T>> AccountsIndex<T, U> {
         if *account_owner == *token_id {
             if account_indexes.contains(&AccountIndex::SplTokenOwner) {
                 if let Some(owner_key) = G::unpack_account_owner(account_data) {
-                    if account_indexes.include_key(owner_key) {
-                        self.spl_token_owner_index.insert(owner_key, pubkey);
-                    }
+                    // if account_indexes.include_key(owner_key) { .. }
+                    self.spl_token_owner_index.insert(owner_key, pubkey);
                 }
             }
 
             if account_indexes.contains(&AccountIndex::SplTokenMint) {
                 if let Some(mint_key) = G::unpack_account_mint(account_data) {
-                    if account_indexes.include_key(mint_key) {
-                        self.spl_token_mint_index.insert(mint_key, pubkey);
-                    }
+                    // if account_indexes.include_key(mint_key) { .. }
+                    self.spl_token_mint_index.insert(mint_key, pubkey);
                 }
             }
         }
