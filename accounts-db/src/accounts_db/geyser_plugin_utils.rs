@@ -3,6 +3,7 @@ use {
         accounts_db::{AccountStorageEntry, AccountsDb},
         accounts_update_notifier_interface::AccountsUpdateNotifierInterface,
     },
+    log::info,
     solana_account::AccountSharedData,
     solana_clock::Slot,
     solana_measure::meas_dur,
@@ -60,17 +61,20 @@ impl AccountsDb {
             return;
         };
 
-        let mut notify_stats = GeyserPluginNotifyAtSnapshotRestoreStats::default();
+        let notify_stats = GeyserPluginNotifyAtSnapshotRestoreStats::default();
         if accounts_update_notifier.snapshot_notifications_enabled() {
-            let mut slots = self.storage.all_slots();
+            let mut slots: Vec<u64> = self.storage.all_slots();
             slots.sort_unstable_by_key(|&slot| Reverse(slot));
             slots
                 .into_iter()
-                .filter_map(|slot| self.storage.get_slot_storage_entry(slot))
-                .map(|storage| {
-                    Self::notify_accounts_in_storage(accounts_update_notifier.as_ref(), &storage)
-                })
-                .for_each(|stats| notify_stats += stats);
+                // .filter_map(|slot| self.storage.get_slot_storage_entry(slot))
+                // .map(|storage| {
+                //     Self::notify_accounts_in_storage(accounts_update_notifier.as_ref(), &storage)
+                // })
+                .for_each(|slot| {
+                    // notify_stats += stats
+                    info!("disabled call to notify_accounts_in_slot for slot {}", slot);
+                });
         }
 
         accounts_update_notifier.notify_end_of_restore_from_snapshot();
@@ -96,6 +100,7 @@ impl AccountsDb {
         }
     }
 
+    #[allow(dead_code)]
     fn notify_accounts_in_storage(
         notifier: &dyn AccountsUpdateNotifierInterface,
         storage: &AccountStorageEntry,
