@@ -93,6 +93,7 @@ use {
     },
     tempfile::TempDir,
 };
+use crate::accounts_index::AccountIndex;
 
 // when the accounts write cache exceeds this many bytes, we will flush it
 // this can be specified on the command line, too (--accounts-db-cache-limit-mb)
@@ -3669,6 +3670,9 @@ impl AccountsDb {
     where
         F: FnMut(Option<(&Pubkey, AccountSharedData, Slot)>),
     {
+
+        info!("using scan_accounts");
+
         // This can error out if the slots being scanned over are aborted
         self.accounts_index.scan_accounts(
             ancestors,
@@ -3702,16 +3706,35 @@ impl AccountsDb {
     where
         F: FnMut(Option<(&Pubkey, AccountSharedData, Slot)>),
     {
-        let key = match &index_key {
-            IndexKey::ProgramId(key) => key,
-            IndexKey::SplTokenMint(key) => key,
-            IndexKey::SplTokenOwner(key) => key,
-        };
-        if !self.account_indexes.include_key(key) {
-            // the requested key was not indexed in the secondary index, so do a normal scan
-            let used_index = false;
-            self.scan_accounts(ancestors, bank_id, scan_func, config)?;
-            return Ok(used_index);
+
+        // patched version to avoid full scans (self.scan_accounts)
+        match index_key {
+            IndexKey::ProgramId(ref account_owner) => {
+                if !self.account_indexes.contains(&AccountIndex::ProgramId)
+                    || !self.account_indexes.include_key(account_owner)
+                {
+                    debug!(
+                        "deny full scan for program_id not indexed: {:?}",
+                        account_owner
+                    );
+                    let used_index = false;
+                    return Ok(used_index);
+                }
+            }
+            IndexKey::SplTokenMint(_) => {
+                if !self.account_indexes.contains(&AccountIndex::SplTokenMint) {
+                    debug!("deny full scan without spl-token-mint");
+                    let used_index = false;
+                    return Ok(used_index);
+                }
+            }
+            IndexKey::SplTokenOwner(_) => {
+                if !self.account_indexes.contains(&AccountIndex::SplTokenOwner) {
+                    debug!("deny full scan without spl-token-owner");
+                    let used_index = false;
+                    return Ok(used_index);
+                }
+            }
         }
 
         self.accounts_index.index_scan_accounts(
