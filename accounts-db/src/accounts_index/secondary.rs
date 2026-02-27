@@ -26,9 +26,10 @@ impl AccountSecondaryIndexes {
     pub fn contains(&self, index: &AccountIndex) -> bool {
         self.indexes.contains(index)
     }
-    pub fn include_key(&self, key: &Pubkey) -> bool {
+    // note: this check is only allowed on ProgramId index using the account owner as key
+    pub fn include_key(&self, account_owner: &Pubkey) -> bool {
         match &self.keys {
-            Some(options) => options.exclude ^ options.keys.contains(key),
+            Some(options) => options.exclude ^ options.keys.contains(account_owner),
             None => true, // include all keys
         }
     }

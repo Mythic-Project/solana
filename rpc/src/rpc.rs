@@ -2279,11 +2279,6 @@ impl JsonRpcRequestProcessor {
             .account_indexes
             .contains(&AccountIndex::SplTokenOwner)
         {
-            if !self.config.account_indexes.include_key(&owner_key) {
-                return Err(RpcCustomError::KeyExcludedFromSecondaryIndex {
-                    index_key: owner_key.to_string(),
-                });
-            }
             self.get_filtered_indexed_accounts(
                 &bank,
                 &IndexKey::SplTokenOwner(owner_key),
@@ -2327,11 +2322,6 @@ impl JsonRpcRequestProcessor {
             .account_indexes
             .contains(&AccountIndex::SplTokenMint)
         {
-            if !self.config.account_indexes.include_key(&mint_key) {
-                return Err(RpcCustomError::KeyExcludedFromSecondaryIndex {
-                    index_key: mint_key.to_string(),
-                });
-            }
             self.get_filtered_indexed_accounts(
                 &bank,
                 &IndexKey::SplTokenMint(mint_key),
